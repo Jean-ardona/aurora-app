@@ -42,4 +42,4 @@ next-env.d.ts
 
 # frames — large binary assets, not tracked in git
 # place your frames in public/frames/ locally
-/public/frames/
+# /public/frames/
