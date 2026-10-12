@@ -1,69 +1,89 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { useCallback } from 'react'
+import dynamic from 'next/dynamic'
+import { TOTAL_SCROLL_VH } from '@/lib/config'
+
+import HeroSection from '@/components/sections/HeroSection'
+import ProblemSection from '@/components/sections/ProblemSection'
+import ModelSection from '@/components/sections/ModelSection'
+import ChoiceSection from '@/components/sections/ChoiceSection'
+import RoadmapSection from '@/components/sections/RoadmapSection'
+import AuroraCardSection from '@/components/sections/AuroraCardSection'
+import JoinSection from '@/components/sections/JoinSection'
+
+// Client-only components (use browser APIs)
+const FrameCanvas = dynamic(() => import('@/components/FrameCanvas'), { ssr: false })
+const ColorLayer  = dynamic(() => import('@/components/ColorLayer'),  { ssr: false })
+const FixedUI     = dynamic(() => import('@/components/FixedUI'),     { ssr: false })
+const CustomCursor = dynamic(() => import('@/components/CustomCursor'), { ssr: false })
+const LenisInit   = dynamic(() => import('@/components/LenisInit'),   { ssr: false })
+
+export default function HomePage() {
+  const handleCanvasReady = useCallback(() => {}, [])
+
+  const scrollToNext = useCallback(() => {
+    const el = document.getElementById('roadmap')
+    if (el) el.scrollIntoView({ behavior: 'smooth' })
+  }, [])
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <>
+      {/*
+        ─── FIXED LAYER (position:fixed, never inside a transformed parent) ───
+        These elements must live at the top of the React tree, directly inside
+        <body>. They must NOT be inside any wrapper with transform/overflow/
+        will-change. Lenis operates on document.documentElement so it never
+        wraps DOM elements — safe.
+      */}
+      <FrameCanvas onReady={handleCanvasReady} />
+      <ColorLayer />
+      <FixedUI />
+      <CustomCursor />
+
+      {/*
+        ─── LENIS INIT ─────────────────────────────────────────────────────────
+        Bootstraps Lenis smooth scroll on document.documentElement.
+        No wrapper element — just a useEffect hook rendered as null.
+      */}
+      <LenisInit />
+
+      {/*
+        ─── GLOBAL VIGNETTE ────────────────────────────────────────────────────
+        Fixed radial vignette above the color layer (z:2) and below all content
+        (z:10). Darkens the edges of the frame subtly — no hard edges, no full-
+        width dark blocks. Helps text contrast on bright sky/facade frames.
+      */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'fixed', inset: 0, zIndex: 2, pointerEvents: 'none',
+          background: 'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.35) 100%)',
+        }}
+      />
+
+      {/*
+        ─── SCROLLABLE CONTENT ─────────────────────────────────────────────────
+        position:relative so sections can use position:absolute for their scrims.
+        NO zIndex here — we don't want to create a stacking context that would
+        isolate the content from the canvas/color-layer blend below.
+        NO transform, overflow, filter, or will-change.
+      */}
+      <main
+        id="scroll-container"
+        style={{
+          position: 'relative',
+          minHeight: `${TOTAL_SCROLL_VH}vh`,
+        }}
+      >
+        <HeroSection />
+        <ProblemSection />
+        <ModelSection />
+        <ChoiceSection onContinue={scrollToNext} />
+        <RoadmapSection />
+        <AuroraCardSection />
+        <JoinSection />
       </main>
-    </div>
-  );
+    </>
+  )
 }
