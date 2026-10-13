@@ -44,11 +44,12 @@ Detailed notes on the scroll engine: [docs/VIDEO_SCRUBBER_REPORT.md](docs/VIDEO_
 
 ## Accessibility
 
-<!-- VERIFY each line below on the final build before publishing, and delete any that is not true. -->
-- Priority cards are real buttons with `aria-pressed` and a visible focus ring.
-- `prefers-reduced-motion` is respected (static states, no scrubbing animation).
-- Text over the video has local scrims and shadows to stay readable on bright frames.
-- The loading screen exposes a progress bar role to assistive technology.
+Accessibility was considered in the design, and a full audit is planned.
+
+<!-- VERIFY on the live site before publishing. -->
+- Text over the video is supported by local contrast scrims and text shadows so it stays readable on bright frames.
+- Short copy, large type and one idea per screen keep the reading load low.
+- Known gaps, planned next: a full keyboard and screen-reader audit, and reduced-motion support.
 
 ## Tech stack
 
