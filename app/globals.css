@@ -21,6 +21,13 @@
   padding: 0;
 }
 
+/* Black background from the very first paint — prevents flash before
+   the LoadingScreen mounts. The loader (z-index 200) covers everything
+   immediately after hydration. */
+html, body {
+  background: #0A0A0A;
+}
+
 html {
   background: var(--bg);
   color: var(--fg);

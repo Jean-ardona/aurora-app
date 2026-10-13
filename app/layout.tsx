@@ -17,7 +17,8 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body>{children}</body>
+      {/* style on body ensures #0A0A0A before any JS/CSS loads — prevents flash */}
+      <body style={{ background: '#0A0A0A' }}>{children}</body>
     </html>
   );
 }
