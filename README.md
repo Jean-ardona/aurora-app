@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Aurora: a city that does not exist yet
 
-## Getting Started
+**Live demo:** https://aurora-app.deployxa.online
+**Built for:** Hyperbloom October, UI/UX & Web Design hackathon
 
-First, run the development server:
+Aurora is a scroll-driven experience for a fictional new city. It starts as a grey, silent architectural model. The visitor decides what the city should become, and every choice brings light and color back to it.
+
+## The problem
+
+Fast-growing cities are usually designed without asking the people who will live in them. Housing, transport and green space are decided first; residents are consulted last, if at all.
+
+## The idea
+
+Aurora flips that order: **a city designed with its future residents from day one.** The city is shown as a black-and-white model. The visitor picks priorities (homes, nature, movement, culture), and the model gradually comes to life. Color is not decoration here, it is the progress bar of participation.
+
+## The experience
+
+1. **Loading screen:** a sun rises over a horizon line as the 3D model downloads, with real progress and rotating messages.
+2. **Hero:** the city emerges from black, the camera sits at the start of a street.
+3. **The problem:** three lines of copy appear as the camera moves forward.
+4. **The model:** the city today, with live counters (residents, districts).
+5. **Shape the city:** four priority cards. Each choice raises a "Life" gauge and softly tints the city.
+6. **Roadmap:** from vision to first stone.
+7. **Your Aurora:** a personal card with the visitor's choices, palette and a generated line, shareable.
+8. **Join:** a founding-resident call to action.
+
+## Design decisions
+
+- **Monochrome as a concept.** A grey model means "not lived in yet". Color arrives only through participation, and stays a quiet tint so the architecture remains readable.
+- **Typography.** Instrument Serif for large titles (editorial, architectural), Inter for labels and body.
+- **Restraint.** Lots of empty space, hairline borders, glass cards, one idea per screen, copy written to be read in a few seconds.
+- **Motion.** Transforms and opacity only, nothing bounces. Text reveals follow the camera.
+
+## Technical highlights
+
+- **Scroll-driven video.** The page position drives `video.currentTime`, smoothed with a time-based filter so motion is continuous on any refresh rate.
+- **From frames to video.** The first version scrubbed 500 image frames. It looked right but loaded slowly and ran out of memory in the browser. Switching to a single video fixed memory and weight.
+- **Keyframe tuning.** Analysing the MP4 showed a keyframe only every 3 seconds, which made backward scrolling hiccup. Re-encoding with a keyframe every 4 frames made seeking near-instant.
+- **Reliable loading.** The video is fully downloaded before the experience starts, so scrubbing never waits for the network.
+- **Color layer.** A fixed overlay of zoned gradients (sky, facades, ground, side accents) with blend modes, driven by CSS variables and animated with GSAP. Overall strength is tunable with `?strength=0.4`.
+- **Adaptive quality.** The page measures its own frame rate at start and switches to a lighter mode on weak devices.
+
+Detailed notes on the scroll engine: [docs/VIDEO_SCRUBBER_REPORT.md](docs/VIDEO_SCRUBBER_REPORT.md) (remove this line if the file is not in the repository).
+
+## Accessibility
+
+<!-- VERIFY each line below on the final build before publishing, and delete any that is not true. -->
+- Priority cards are real buttons with `aria-pressed` and a visible focus ring.
+- `prefers-reduced-motion` is respected (static states, no scrubbing animation).
+- Text over the video has local scrims and shadows to stay readable on bright frames.
+- The loading screen exposes a progress bar role to assistive technology.
+
+## Tech stack
+
+Next.js (App Router), TypeScript, Tailwind CSS, GSAP + ScrollTrigger, Lenis, Zustand.
+<!-- VERIFY this list matches package.json -->
+
+## Run locally
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev          # development
+npm run build && npm start   # production build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Add `?debug=1` to the URL to show a performance HUD.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## AI disclosure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Built with AI assistance, as allowed by the hackathon rules: Kiro was used as the development environment to write the code, and Claude helped with design direction, technical planning and writing. The concept, art direction choices, testing and decisions are the author's.
 
-## Learn More
+## Credits
 
-To learn more about Next.js, take a look at the following resources:
+- City model video: free stock footage from Pexels, used under the Pexels License. [Add the video title and the author name, with the link to its Pexels page]
+- Fonts: Instrument Serif and Inter via Google Fonts (SIL Open Font License)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Author
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Ardona Jean-Baptiste
