@@ -40,7 +40,7 @@ Aurora flips that order: **a city designed with its future residents from day on
 - **Color layer.** A fixed overlay of zoned gradients (sky, facades, ground, side accents) with blend modes, driven by CSS variables and animated with GSAP. Overall strength is tunable with `?strength=0.4`.
 - **Adaptive quality.** The page measures its own frame rate at start and switches to a lighter mode on weak devices.
 
-Detailed notes on the scroll engine: [docs/VIDEO_SCRUBBER_REPORT.md](docs/VIDEO_SCRUBBER_REPORT.md) (remove this line if the file is not in the repository).
+Detailed notes on the scroll engine: [docs/VIDEO_SCRUBBER_REPORT.md](docs/VIDEO_SCRUBBER_REPORT.md)
 
 ## Accessibility
 
@@ -72,7 +72,7 @@ Built with AI assistance, as allowed by the hackathon rules: Kiro was used as th
 
 ## Credits
 
-- City model video: free stock footage from Pexels, used under the Pexels License. [Add the video title and the author name, with the link to its Pexels page]
+- City model video: free stock footage from Pexels, used under the Pexels License.
 - Fonts: Instrument Serif and Inter via Google Fonts (SIL Open Font License)
 
 ## Author
