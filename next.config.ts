@@ -7,13 +7,21 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Long-term immutable cache for all frame assets served from /public/frames/
         source: "/frames/:path*",
         headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
-          },
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+      {
+        source: "/city.mp4",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+      {
+        source: "/city-fast.mp4",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],
       },
     ];

@@ -1,61 +1,70 @@
 'use client'
 
 /**
- * ColorLayer — 4 zone-based transparent layers that blend over the B&W canvas.
+ * ColorLayer v2 — subtler city tints.
  *
- * Zones (from top to bottom of viewport):
- *  1. Sky      top 40%     warm amber/rose   mix-blend-mode: soft-light
- *  2. Facade   full        teal/blue tint    mix-blend-mode: color     max 0.6
- *  3. Ground   bottom 25%  warm street glow  mix-blend-mode: overlay
- *  4. Accents  left+right  magenta blobs     mix-blend-mode: soft-light
+ * Zone caps (before multiplying by COLOR_STRENGTH):
+ *   sky    → max 0.50  (soft-light)
+ *   facade → max 0.50  (color blend)
+ *   ground → max 0.40  (overlay)
+ *   accents → max 0.30 (soft-light, side blobs)
  *
- * Active priorities influence which zones and what hue:
- *  housing  → warm amber  (sky + ground strong)
- *  nature   → green/teal  (facade strong)
- *  mobility → electric blue (facade + ground)
- *  culture  → magenta     (accents strong)
+ * COLOR_STRENGTH default 0.4 → final opacities with all 4 priorities:
+ *   sky    ≈ 0.50 × 0.40 = 0.20
+ *   facade ≈ 0.50 × 0.40 = 0.20
+ *   ground ≈ 0.40 × 0.40 = 0.16
+ *   accents ≈ 0.30 × 0.40 = 0.12
  *
- * All animated via GSAP tweening individual CSS variables on :root.
- * Opacities are set directly as numeric style props — no CSS calc().
- *
- * This component is position:fixed, z-index:1, pointer-events:none.
- * It must be a sibling of the canvas (same stacking context, no isolation).
+ * Desaturated city-tint colors (vivid colors kept only for UI chips/borders):
+ *   Housing  #c9a27a  hsl(30, 38%, 63%)
+ *   Nature   #7fa89a  hsl(168, 17%, 57%)
+ *   Mobility #7a97c4  hsl(213, 37%, 62%)
+ *   Culture  #a98bb5  hsl(286, 24%, 62%)
  */
 
 import { useEffect, useRef } from 'react'
 import { gsap } from 'gsap'
 import { useAuroraStore, type Priority } from '@/lib/store'
+import { resolveColorStrength } from '@/lib/config'
 
-// Per-priority contributions to each zone
-const ZONE_CONFIG: Record<Priority, {
-  skyHue: number;   skyStr: number
-  facadeHue: number; facadeStr: number
-  groundHue: number; groundStr: number
-  accentHue: number; accentStr: number
-}> = {
-  housing:  { skyHue: 35,  skyStr: 0.9,  facadeHue: 30,  facadeStr: 0.2, groundHue: 40,  groundStr: 0.8, accentHue: 30,  accentStr: 0.1 },
-  nature:   { skyHue: 160, skyStr: 0.3,  facadeHue: 165, facadeStr: 0.9, groundHue: 145, groundStr: 0.3, accentHue: 155, accentStr: 0.2 },
-  mobility: { skyHue: 210, skyStr: 0.3,  facadeHue: 210, facadeStr: 0.8, groundHue: 200, groundStr: 0.6, accentHue: 215, accentStr: 0.15 },
-  culture:  { skyHue: 300, skyStr: 0.4,  facadeHue: 295, facadeStr: 0.4, groundHue: 305, groundStr: 0.3, accentHue: 300, accentStr: 0.95 },
+// ─── Desaturated hue values ───────────────────────────────────────────────────
+const CITY_HUE: Record<Priority, number> = {
+  housing:  30,   // warm sand
+  nature:   168,  // muted teal
+  mobility: 213,  // soft blue
+  culture:  286,  // muted mauve
 }
 
-function blendZone(choices: Priority[], zone: 'sky' | 'facade' | 'ground' | 'accent') {
-  if (choices.length === 0) return { hue: 35, str: 0 }
+// ─── Per-priority zone strength weights ───────────────────────────────────────
+const ZONE_WEIGHTS: Record<Priority, {
+  sky: number; facade: number; ground: number; accent: number
+}> = {
+  housing:  { sky: 0.9,  facade: 0.2, ground: 0.8,  accent: 0.1  },
+  nature:   { sky: 0.25, facade: 0.9, ground: 0.25, accent: 0.2  },
+  mobility: { sky: 0.25, facade: 0.8, ground: 0.5,  accent: 0.15 },
+  culture:  { sky: 0.35, facade: 0.35, ground: 0.25, accent: 0.95 },
+}
+
+// ─── Per-zone hard caps ────────────────────────────────────────────────────────
+const ZONE_CAPS = { sky: 0.50, facade: 0.50, ground: 0.40, accent: 0.30 } as const
+type ZoneName = keyof typeof ZONE_CAPS
+
+function blendZone(choices: Priority[], zone: ZoneName) {
+  if (choices.length === 0) return { hue: 30, str: 0 }
   let hueSum = 0, strSum = 0
   choices.forEach((p) => {
-    hueSum += ZONE_CONFIG[p][`${zone}Hue`]
-    strSum += ZONE_CONFIG[p][`${zone}Str`]
+    hueSum += CITY_HUE[p]
+    strSum += ZONE_WEIGHTS[p][zone]
   })
   return {
     hue: hueSum / choices.length,
-    str: Math.min(strSum / choices.length, zone === 'facade' ? 0.6 : 0.85),
+    str: Math.min(strSum / choices.length, ZONE_CAPS[zone]),
   }
 }
 
 export default function ColorLayer() {
   const { choices, lifeScore } = useAuroraStore()
 
-  // Refs to the 4 zone divs — we tween their opacity directly
   const skyRef    = useRef<HTMLDivElement>(null)
   const facadeRef = useRef<HTMLDivElement>(null)
   const groundRef = useRef<HTMLDivElement>(null)
@@ -63,123 +72,84 @@ export default function ColorLayer() {
   const accRRef   = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    const strength    = resolveColorStrength()
+    const globalScale = (lifeScore / 100) * strength
+
     if (lifeScore === 0) {
-      // Fade everything out
       ;[skyRef, facadeRef, groundRef, accLRef, accRRef].forEach((r) => {
         if (r.current) gsap.to(r.current, { opacity: 0, duration: 1.2, ease: 'power2.out' })
       })
       return
     }
 
-    const globalScale = lifeScore / 100
-
     const sky    = blendZone(choices, 'sky')
     const facade = blendZone(choices, 'facade')
     const ground = blendZone(choices, 'ground')
     const accent = blendZone(choices, 'accent')
 
-    // Sky
+    // Final opacities = zone.str × globalScale
+    // With strength=0.4 and all 4 priorities selected:
+    //   sky    = 0.50 × (1.0 × 0.4) = 0.20
+    //   facade = 0.50 × (1.0 × 0.4) = 0.20
+    //   ground = 0.40 × (1.0 × 0.4) = 0.16
+    //   accents= 0.30 × (1.0 × 0.4) = 0.12
+    const skyOp    = sky.str    * globalScale
+    const facadeOp = facade.str * globalScale
+    const groundOp = ground.str * globalScale
+    const accentOp = accent.str * globalScale
+
     if (skyRef.current) {
+      // Use desaturated city hue (low saturation for soft light effect)
       skyRef.current.style.background =
-        `radial-gradient(ellipse 100% 55% at 50% 0%, hsl(${sky.hue}, 90%, 62%) 0%, hsl(${sky.hue + 15}, 80%, 50%) 45%, transparent 75%)`
-      gsap.to(skyRef.current, { opacity: sky.str * globalScale, duration: 1.2, ease: 'power2.out' })
+        `radial-gradient(ellipse 100% 55% at 50% 0%, hsl(${sky.hue}, 45%, 62%) 0%, hsl(${sky.hue + 12}, 35%, 52%) 45%, transparent 75%)`
+      gsap.to(skyRef.current, { opacity: skyOp, duration: 1.2, ease: 'power2.out' })
     }
 
-    // Facade
     if (facadeRef.current) {
       facadeRef.current.style.background =
-        `linear-gradient(170deg, hsl(${facade.hue + 20}, 75%, 40%) 0%, hsl(${facade.hue - 15}, 70%, 35%) 100%)`
-      gsap.to(facadeRef.current, { opacity: facade.str * globalScale, duration: 1.2, ease: 'power2.out' })
+        `linear-gradient(170deg, hsl(${facade.hue + 15}, 30%, 45%) 0%, hsl(${facade.hue - 10}, 25%, 38%) 100%)`
+      gsap.to(facadeRef.current, { opacity: facadeOp, duration: 1.2, ease: 'power2.out' })
     }
 
-    // Ground
     if (groundRef.current) {
       groundRef.current.style.background =
-        `radial-gradient(ellipse 80% 60% at 50% 120%, hsl(${ground.hue}, 95%, 65%) 0%, hsl(${ground.hue + 10}, 80%, 55%) 40%, transparent 70%)`
-      gsap.to(groundRef.current, { opacity: ground.str * globalScale, duration: 1.2, ease: 'power2.out' })
+        `radial-gradient(ellipse 80% 60% at 50% 120%, hsl(${ground.hue}, 50%, 60%) 0%, hsl(${ground.hue + 8}, 40%, 50%) 40%, transparent 70%)`
+      gsap.to(groundRef.current, { opacity: groundOp, duration: 1.2, ease: 'power2.out' })
     }
 
-    // Accents (left + right edge blobs)
     if (accLRef.current && accRRef.current) {
-      const bg = `radial-gradient(ellipse 50% 70% at 0% 60%, hsl(${accent.hue}, 85%, 55%) 0%, transparent 70%)`
-      const bgR = `radial-gradient(ellipse 50% 70% at 100% 40%, hsl(${accent.hue + 10}, 80%, 50%) 0%, transparent 70%)`
-      accLRef.current.style.background = bg
-      accRRef.current.style.background = bgR
-      gsap.to([accLRef.current, accRRef.current], { opacity: accent.str * globalScale, duration: 1.2, ease: 'power2.out' })
+      accLRef.current.style.background =
+        `radial-gradient(ellipse 50% 70% at 0% 60%, hsl(${accent.hue}, 40%, 50%) 0%, transparent 70%)`
+      accRRef.current.style.background =
+        `radial-gradient(ellipse 50% 70% at 100% 40%, hsl(${accent.hue + 8}, 35%, 48%) 0%, transparent 70%)`
+      gsap.to([accLRef.current, accRRef.current], { opacity: accentOp, duration: 1.2, ease: 'power2.out' })
     }
 
-    // Also update the CSS variable for the life gauge colour
+    // CSS var for UI elements (life gauge, etc.) — keep hue-only, vivid stays for UI
     gsap.to(document.documentElement, {
       '--tint-hue': facade.hue,
-      '--tint-intensity': globalScale * 0.75,
-      duration: 1.2,
-      ease: 'power2.out',
+      '--tint-intensity': (lifeScore / 100) * 0.75,
+      duration: 1.2, ease: 'power2.out',
     })
   }, [choices, lifeScore])
 
-  const baseStyle: React.CSSProperties = {
-    position: 'absolute',
-    inset: 0,
-    pointerEvents: 'none',
-    opacity: 0,
-    willChange: 'opacity',
+  const base: React.CSSProperties = {
+    position: 'absolute', inset: 0,
+    pointerEvents: 'none', opacity: 0, willChange: 'opacity',
   }
 
   return (
     <div
       aria-hidden="true"
       style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1,
-        pointerEvents: 'none',
-        // NO transform, filter, or isolation here — must share stacking context with canvas
+        position: 'fixed', inset: 0, zIndex: 1, pointerEvents: 'none',
       }}
     >
-      {/* 1. Sky zone — soft-light blend */}
-      <div
-        ref={skyRef}
-        style={{
-          ...baseStyle,
-          mixBlendMode: 'soft-light',
-        }}
-      />
-
-      {/* 2. Facade zone — color blend, max 0.6 intensity */}
-      <div
-        ref={facadeRef}
-        style={{
-          ...baseStyle,
-          mixBlendMode: 'color',
-        }}
-      />
-
-      {/* 3. Ground zone — overlay blend */}
-      <div
-        ref={groundRef}
-        style={{
-          ...baseStyle,
-          mixBlendMode: 'overlay',
-        }}
-      />
-
-      {/* 4a. Left accent blob — soft-light */}
-      <div
-        ref={accLRef}
-        style={{
-          ...baseStyle,
-          mixBlendMode: 'soft-light',
-        }}
-      />
-
-      {/* 4b. Right accent blob — soft-light */}
-      <div
-        ref={accRRef}
-        style={{
-          ...baseStyle,
-          mixBlendMode: 'soft-light',
-        }}
-      />
+      <div ref={skyRef}    style={{ ...base, mixBlendMode: 'soft-light' }} />
+      <div ref={facadeRef} style={{ ...base, mixBlendMode: 'color'      }} />
+      <div ref={groundRef} style={{ ...base, mixBlendMode: 'overlay'    }} />
+      <div ref={accLRef}   style={{ ...base, mixBlendMode: 'soft-light' }} />
+      <div ref={accRRef}   style={{ ...base, mixBlendMode: 'soft-light' }} />
     </div>
   )
 }

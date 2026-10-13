@@ -40,6 +40,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# frames — large binary assets, not tracked in git
-# place your frames in public/frames/ locally
-# /public/frames/
+# frames — WebP sequence, not needed for production (video mode is default)
+/public/frames/
+
+# original video — production uses city-fast.mp4 only
+/public/city.mp4

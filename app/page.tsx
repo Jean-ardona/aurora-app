@@ -1,58 +1,61 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { TOTAL_SCROLL_VH } from '@/lib/config'
+import { TOTAL_SCROLL_VH, resolveMode, type ScrubMode } from '@/lib/config'
 
-import HeroSection from '@/components/sections/HeroSection'
-import ProblemSection from '@/components/sections/ProblemSection'
-import ModelSection from '@/components/sections/ModelSection'
-import ChoiceSection from '@/components/sections/ChoiceSection'
-import RoadmapSection from '@/components/sections/RoadmapSection'
+import HeroSection     from '@/components/sections/HeroSection'
+import ProblemSection  from '@/components/sections/ProblemSection'
+import ModelSection    from '@/components/sections/ModelSection'
+import ChoiceSection   from '@/components/sections/ChoiceSection'
+import RoadmapSection  from '@/components/sections/RoadmapSection'
 import AuroraCardSection from '@/components/sections/AuroraCardSection'
-import JoinSection from '@/components/sections/JoinSection'
+import JoinSection     from '@/components/sections/JoinSection'
 
-// Client-only components (use browser APIs)
-const FrameCanvas = dynamic(() => import('@/components/FrameCanvas'), { ssr: false })
-const ColorLayer  = dynamic(() => import('@/components/ColorLayer'),  { ssr: false })
-const FixedUI     = dynamic(() => import('@/components/FixedUI'),     { ssr: false })
-const CustomCursor = dynamic(() => import('@/components/CustomCursor'), { ssr: false })
-const LenisInit   = dynamic(() => import('@/components/LenisInit'),   { ssr: false })
+// Client-only — browser APIs
+const VideoScrubber = dynamic(() => import('@/components/VideoScrubber'), { ssr: false })
+const FrameCanvas   = dynamic(() => import('@/components/FrameCanvas'),   { ssr: false })
+const ColorLayer    = dynamic(() => import('@/components/ColorLayer'),    { ssr: false })
+const FixedUI       = dynamic(() => import('@/components/FixedUI'),       { ssr: false })
+const CustomCursor  = dynamic(() => import('@/components/CustomCursor'),  { ssr: false })
+const LenisInit     = dynamic(() => import('@/components/LenisInit'),     { ssr: false })
 
 export default function HomePage() {
-  const handleCanvasReady = useCallback(() => {}, [])
+  // Resolve mode on client (reads ?mode= URL param)
+  const [mode, setMode] = useState<ScrubMode>('video') // default matches config
+  useEffect(() => { setMode(resolveMode()) }, [])
 
-  const scrollToNext = useCallback(() => {
-    const el = document.getElementById('roadmap')
-    if (el) el.scrollIntoView({ behavior: 'smooth' })
+  const handleReady    = useCallback(() => {}, [])
+  const scrollToNext   = useCallback(() => {
+    document.getElementById('roadmap')?.scrollIntoView({ behavior: 'smooth' })
   }, [])
 
   return (
     <>
       {/*
-        ─── FIXED LAYER (position:fixed, never inside a transformed parent) ───
-        These elements must live at the top of the React tree, directly inside
-        <body>. They must NOT be inside any wrapper with transform/overflow/
-        will-change. Lenis operates on document.documentElement so it never
-        wraps DOM elements — safe.
+        ─── SCRUBBER LAYER (z-index 0) ────────────────────────────────────────
+        Exactly one is rendered at a time.
+        Both sit at position:fixed, z-index:0 — same stacking context as
+        ColorLayer so mix-blend-mode blends with the background correctly.
       */}
-      <FrameCanvas onReady={handleCanvasReady} />
+      {mode === 'video'
+        ? <VideoScrubber onReady={handleReady} />
+        : <FrameCanvas   onReady={handleReady} />
+      }
+
+      {/* Color overlay (z-index 1) */}
       <ColorLayer />
+
+      {/* Fixed chrome (z-index 50) */}
       <FixedUI />
       <CustomCursor />
 
-      {/*
-        ─── LENIS INIT ─────────────────────────────────────────────────────────
-        Bootstraps Lenis smooth scroll on document.documentElement.
-        No wrapper element — just a useEffect hook rendered as null.
-      */}
+      {/* Lenis smooth scroll — renders null, no DOM wrapper */}
       <LenisInit />
 
       {/*
-        ─── GLOBAL VIGNETTE ────────────────────────────────────────────────────
-        Fixed radial vignette above the color layer (z:2) and below all content
-        (z:10). Darkens the edges of the frame subtly — no hard edges, no full-
-        width dark blocks. Helps text contrast on bright sky/facade frames.
+        ─── GLOBAL VIGNETTE (z-index 2) ───────────────────────────────────────
+        Soft radial darkening at the edges. No hard lines, no full-width blocks.
       */}
       <div
         aria-hidden="true"
@@ -64,17 +67,12 @@ export default function HomePage() {
 
       {/*
         ─── SCROLLABLE CONTENT ─────────────────────────────────────────────────
-        position:relative so sections can use position:absolute for their scrims.
-        NO zIndex here — we don't want to create a stacking context that would
-        isolate the content from the canvas/color-layer blend below.
-        NO transform, overflow, filter, or will-change.
+        No zIndex — avoids isolating content from the blend layers below.
+        No transform / overflow / filter / will-change.
       */}
       <main
         id="scroll-container"
-        style={{
-          position: 'relative',
-          minHeight: `${TOTAL_SCROLL_VH}vh`,
-        }}
+        style={{ position: 'relative', minHeight: `${TOTAL_SCROLL_VH}vh` }}
       >
         <HeroSection />
         <ProblemSection />
